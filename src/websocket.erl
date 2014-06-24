@@ -71,9 +71,10 @@ ws_loop(Payload, Broadcaster, _ReplyChannel) ->
     %% [6]
 
     %% [7]
-    io:format("Received data: ~p~n", [Payload]),
+%    io:format("Received data: ~p~n", [Payload]),
     Received = list_to_binary(Payload),
-    Broadcaster ! {broadcast, self(), Received},
+%    Broadcaster ! {broadcast, self(), Received},
+    Broadcaster ! {echo, self(), Received},
 
     %% [8]
     Broadcaster.
@@ -101,6 +102,9 @@ broadcast_server(Pids) ->
     Pids1 = receive
                 {register, Pid, Channel} ->
                     broadcast_register(Pid, Channel, Pids);
+                {echo, Pid, Message} ->
+                    broadcast_echo(Pid, Message, Pids),
+                    Pids;
                 {broadcast, Pid, Message} ->
                     broadcast_sendall(Pid, Message, Pids);
                 {'DOWN', MRef, process, Pid, _Reason} ->
@@ -116,17 +120,19 @@ broadcast_server(Pids) ->
 
 broadcast_register(Pid, Channel, Pids) ->
     MRef = erlang:monitor(process, Pid),
-    broadcast_sendall(
-      Pid, "connected", dict:store(Pid, {Channel, MRef}, Pids)).
+    dict:store(Pid, {Channel, MRef}, Pids).
 
 broadcast_down(Pid, MRef, Pids) ->
-    Pids1 = case dict:find(Pid, Pids) of
-                {ok, {_, MRef}} ->
-                    dict:erase(Pid, Pids);
-                _ ->
-                    Pids
-            end,
-    broadcast_sendall(Pid, "disconnected", Pids1).
+    case dict:find(Pid, Pids) of
+        {ok, {_, MRef}} ->
+            dict:erase(Pid, Pids);
+        _ ->
+            Pids
+    end.
+
+broadcast_echo(Pid, Msg, Pids) ->
+    {Reply, _} = dict:fetch(Pid, Pids),
+    Reply(Msg).
 
 broadcast_sendall(Pid, Msg, Pids) ->
     M = iolist_to_binary([pid_to_list(Pid), ": ", Msg]),
@@ -152,5 +158,7 @@ printer(BroadcasterPid, Delay) ->
     receive
         {'size', Size} ->
             io:format("Current number of clients: ~p~n", [Size])
+    after Delay ->
+            io:format("No response in time")
     end,
     printer(BroadcasterPid, Delay).
