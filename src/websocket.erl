@@ -59,6 +59,7 @@ start() ->
     Broadcaster = spawn_link(?MODULE, broadcast_server, [dict:new()]),
     _Printer = spawn_link(?MODULE, printer, [Broadcaster, 5000]),
     mochiweb_http:start([
+                         {max, 1554979}, % fs.file-max on Ben's AWS instance
                          {name, ?MODULE},
                          {loop, {?MODULE, loop, [Broadcaster]}},
                          {port, 8080}
