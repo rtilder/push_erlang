@@ -1,0 +1,9 @@
+%% -*- erlang -*-
+{application, push_erlang,
+ [{description, "push_erlang"},
+  {vsn, "0.1"},
+  {modules, []},
+  {registered, []},
+  {mod, {'push_erlang_app', []}},
+  {env, []},
+  {applications, [kernel, stdlib, crypto, sasl]}]}.
